@@ -72,7 +72,8 @@ Entry-level DevOps Engineer transitioning from Sales with a passion for automati
 *Jan 20205 - Present*
 
 - Travelled to different events to run the booth we had and also had conversations with C level execs about our product  
-- Surpassed monthly quota every month 
+- Surpassed monthly quota every month
+- Exposed to different AI Cyber products
 
 ---
 
