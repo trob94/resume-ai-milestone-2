@@ -17,7 +17,7 @@ commit_sha = os.environ.get('COMMIT_SHA', 'unknown')
 
 # Step 1: Read the resume file
 def read_resume():
-    with open('resume.md', 'r') as file:
+    with open('../resume.md', 'r') as file:
         return file.read()
 
 # Step 2: Use AI to convert resume to HTML
