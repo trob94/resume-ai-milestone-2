@@ -1,1 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Resume Website - S3 Bucket and DynamoDB Tables'
 
+Resources:
+  # S3 Bucket - Hosting Resume Website
+  ResumeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'resume-site-${AWS::AccountId}'
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+
+  # Bucket Policy - Public Bucket 
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ResumeBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${ResumeBucket.Arn}/*'
+
+  # Table 1 - Tracks each deployment
+  DeploymentTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'ResumeDeployments'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  # Table 2 - Stores resume analysis scores
+  AnalyticsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'ResumeAnalytics'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+Outputs:
+  BucketName:
+    Value: !Ref ResumeBucket
+  
+  WebsiteURL:
+    Value: !GetAtt ResumeBucket.WebsiteURL
+  
+  DeploymentTableName:
+    Value: !Ref DeploymentTable
+  
+  AnalyticsTableName:
+    Value: !Ref AnalyticsTable
