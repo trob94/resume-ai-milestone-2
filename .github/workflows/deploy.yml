@@ -1,1 +1,89 @@
+name: Deploy Resume Website
 
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: Get the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      # Step 2: Login to AWS
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      # Step 3: Create AWS resources (S3 and DynamoDB)
+      - name: Deploy infrastructure
+        run: |
+          aws cloudformation deploy \
+            --template-file infrastructure/template.yaml \
+            --stack-name resume-website \
+            --no-fail-on-empty-changeset
+          
+          # Get the bucket name
+          echo "BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name resume-website \
+            --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' \
+            --output text)" >> $GITHUB_ENV
+          
+          # Get the table names
+          echo "DEPLOYMENT_TABLE=$(aws cloudformation describe-stacks \
+            --stack-name resume-website \
+            --query 'Stacks[0].Outputs[?OutputKey==`DeploymentTableName`].OutputValue' \
+            --output text)" >> $GITHUB_ENV
+          
+          echo "ANALYTICS_TABLE=$(aws cloudformation describe-stacks \
+            --stack-name resume-website \
+            --query 'Stacks[0].Outputs[?OutputKey==`AnalyticsTableName`].OutputValue' \
+            --output text)" >> $GITHUB_ENV
+      
+      # Step 4: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      # Step 5: Install Python packages
+      - name: Install dependencies
+        run: |
+          cd scripts
+          pip install -r requirements.txt
+      
+      # Step 6: Figure out if this is beta or prod
+      - name: Set environment
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "ENVIRONMENT=beta" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+          fi
+      
+      # Step 7: Run the Python script
+      - name: Generate and deploy resume
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          cd scripts
+          python create-resume.py
+      
+      # Step 8: Show the website URL
+      - name: Show website URL
+        run: |
+          WEBSITE_URL=$(aws cloudformation describe-stacks \
+            --stack-name resume-website \
+            --query 'Stacks[0].Outputs[?OutputKey==`WebsiteURL`].OutputValue' \
+            --output text)
+          
+          echo "🌐 Your resume is live at:"
+          echo "$WEBSITE_URL/${{ env.ENVIRONMENT }}/index.html"
